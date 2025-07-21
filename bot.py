@@ -1,28 +1,28 @@
+from pyrogram import Client, filters
+from pytube import Playlist
 import os
-import subprocess
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from keep_alive import keep_alive
 
-TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
+API_ID = 12345678
+API_HASH = "your_api_hash"
+BOT_TOKEN = "your_bot_token"
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Send me a YouTube playlist, Drive or Dailymotion link!")
+app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-def handle_message(update: Update, context: CallbackContext):
-    url = update.message.text.strip()
-    update.message.reply_text("Downloading...")
-    subprocess.run(["yt-dlp", url])
-    for file in os.listdir():
-        if file.endswith((".mp4", ".mkv", ".webm", ".mp3")):
-            update.message.reply_document(open(file, 'rb'))
+keep_alive()  # Keep Replit running
 
-def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-    updater.start_polling()
-    updater.idle()
+@app.on_message(filters.command("start"))
+async def start(client, message):
+    await message.reply("🎥 YouTube Playlist Downloader Bot is Online!")
 
-if __name__ == "__main__":
-    main()
+@app.on_message(filters.text & filters.private)
+async def download_playlist(client, message):
+    url = message.text
+    if "playlist" in url:
+        playlist = Playlist(url)
+        for video in playlist.videos:
+            filename = video.streams.get_highest_resolution().download()
+            await message.reply_video(video=filename)
+            os.remove(filename)
+
+app.run()
